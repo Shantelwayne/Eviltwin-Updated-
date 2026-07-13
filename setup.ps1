@@ -13,14 +13,14 @@ $ErrorActionPreference = "Stop"
 $Host.UI.RawUI.WindowTitle = "Software Setup"
 
 # --- Paths ---
-$REPO_DIR         = $LaunchDir.TrimEnd('\')
+$REPO_DIR         = $LaunchDir.TrimEnd('\').TrimEnd('"').Trim()
 $HMDM_SERVER_DIR  = "$REPO_DIR\hmdm-server-master\hmdm-server-master"
 $TOMCAT_VERSION   = "9.0.98"
 $TOMCAT_DIR       = "C:\tomcat9"
 $HMDM_DATA_DIR    = "C:\hmdm"
 $LOG_FILE         = "$HMDM_DATA_DIR\logs\setup.log"
 $CHECKPOINT_FILE  = "$HMDM_DATA_DIR\logs\setup_checkpoint.json"
-$PG_BIN           = "C:\Program Files\PostgreSQL\16\bin"
+$PG_BIN           = ""   # auto-detected below
 $PG_HOST          = "localhost"
 $PG_PORT          = "5432"
 $PG_DB            = "hmdm"
@@ -59,6 +59,46 @@ function Prompt-Continue($question) {
 }
 function Show-Progress($activity, $status, $pct) {
     Write-Progress -Activity $activity -Status $status -PercentComplete $pct
+}
+
+# --- Auto-detect PostgreSQL bin directory ---
+function Find-PgBin {
+    # 1. Already on PATH
+    $psqlOnPath = Get-Command psql -ErrorAction SilentlyContinue
+    if ($psqlOnPath) {
+        return Split-Path $psqlOnPath.Source
+    }
+    # 2. Search common install locations for any version
+    $candidates = @(
+        "C:\Program Files\PostgreSQL\16\bin",
+        "C:\Program Files\PostgreSQL\15\bin",
+        "C:\Program Files\PostgreSQL\14\bin",
+        "C:\Program Files\PostgreSQL\13\bin",
+        "C:\Program Files\PostgreSQL\12\bin"
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path "$c\psql.exe") { return $c }
+    }
+    # 3. Search registry for install location
+    $regPaths = @(
+        "HKLM:\SOFTWARE\PostgreSQL\Installations",
+        "HKLM:\SOFTWARE\Wow6432Node\PostgreSQL\Installations"
+    )
+    foreach ($regPath in $regPaths) {
+        if (Test-Path $regPath) {
+            Get-ChildItem $regPath -ErrorAction SilentlyContinue | ForEach-Object {
+                $base = (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).Base
+                if ($base -and (Test-Path "$base\bin\psql.exe")) {
+                    return "$base\bin"
+                }
+            }
+        }
+    }
+    # 4. Deep search under Program Files
+    $found = Get-ChildItem "C:\Program Files\PostgreSQL" -Filter "psql.exe" -Recurse -ErrorAction SilentlyContinue |
+             Select-Object -First 1
+    if ($found) { return $found.DirectoryName }
+    return $null
 }
 
 # --- Checkpoint helpers ---
@@ -209,23 +249,105 @@ if (Step-Done $cp 2) {
 Print-Step 3 $TOTAL_STEPS "Installing Apache Maven"
 if (Step-Done $cp 3) {
     Print-Done "Maven"
+    # Make sure Maven is accessible for later steps
+    $MAVEN_HOME = "C:\Apache\Maven"
+    $MAVEN_BIN = "$MAVEN_HOME\bin"
+    if (Test-Path "$MAVEN_BIN\mvn.cmd") {
+        $env:Path += ";$MAVEN_BIN"
+    }
 } else {
+    # Verify Java is available first
+    $javaExe = Get-Command java -ErrorAction SilentlyContinue
+    if (-not $javaExe) {
+        Print-Error "Java not found. Maven requires Java to be installed first."
+        Print-Error "Please re-run SETUP.bat from Step 1."
+        Write-Log "ERROR Step 3: Java not found"
+        exit 1
+    }
+    
+    $MAVEN_HOME = "C:\Apache\Maven"
+    $MAVEN_BIN = "$MAVEN_HOME\bin"
+    
+    # Check if Maven is already installed and working
+    $mvnExe = $null
     if (Get-Command mvn -ErrorAction SilentlyContinue) {
-        Print-Skip "Maven (already on PATH)"
+        $mvnExe = (Get-Command mvn).Source
+        Print-Skip "Maven (already on PATH at $mvnExe)"
+    } elseif (Test-Path "$MAVEN_BIN\mvn.cmd") {
+        $mvnExe = "$MAVEN_BIN\mvn.cmd"
+        # Add to current session PATH
+        $env:Path += ";$MAVEN_BIN"
+        Print-Skip "Maven (found at $MAVEN_HOME)"
     } else {
-        Print-Info "Installing Apache Maven via winget..."
+        Print-Info "Downloading and installing Apache Maven..."
+        
         try {
-            winget install --id Apache.Maven --accept-source-agreements --accept-package-agreements -e --silent 2>&1 | Out-Null
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
-                        [System.Environment]::GetEnvironmentVariable("Path","User")
-            Print-OK "Maven installed"
+            # Maven version and download URL
+            $mavenVersion = "3.9.9"
+            $mavenUrl = "https://archive.apache.org/dist/maven/maven-3/$mavenVersion/binaries/apache-maven-$mavenVersion-bin.zip"
+            $downloadPath = "$env:TEMP\apache-maven-$mavenVersion.zip"
+            
+            # Download Maven
+            Print-Info "Downloading Maven $mavenVersion (this may take a moment)..."
+            Show-Progress "Maven Download" "Downloading..." 20
+            Invoke-WebRequest -Uri $mavenUrl -OutFile $downloadPath -UseBasicParsing
+            Show-Progress "Maven Download" "Downloaded" 60
+            
+            # Create Maven directory
+            if (Test-Path $MAVEN_HOME) { 
+                Remove-Item $MAVEN_HOME -Recurse -Force 
+            }
+            New-Item -ItemType Directory -Path $MAVEN_HOME -Force | Out-Null
+            
+            # Extract Maven
+            Print-Info "Extracting Maven..."
+            Show-Progress "Maven Install" "Extracting..." 80
+            Expand-Archive -Path $downloadPath -DestinationPath $MAVEN_HOME -Force
+            
+            # Move files from nested apache-maven-x.x.x directory to Maven root
+            $extractedDir = "$MAVEN_HOME\apache-maven-$mavenVersion"
+            if (Test-Path $extractedDir) {
+                Get-ChildItem $extractedDir | Move-Item -Destination $MAVEN_HOME -Force
+                Remove-Item $extractedDir -Force
+            }
+            
+            # Set environment variables permanently
+            Print-Info "Configuring Maven environment..."
+            [System.Environment]::SetEnvironmentVariable("MAVEN_HOME", $MAVEN_HOME, "Machine")
+            
+            # Add Maven to system PATH
+            $currentPath = [System.Environment]::GetEnvironmentVariable("PATH", "Machine")
+            if ($currentPath -notlike "*$MAVEN_BIN*") {
+                $newPath = "$currentPath;$MAVEN_BIN"
+                [System.Environment]::SetEnvironmentVariable("PATH", $newPath, "Machine")
+            }
+            
+            # Add to current session PATH
+            $env:Path += ";$MAVEN_BIN"
+            $mvnExe = "$MAVEN_BIN\mvn.cmd"
+            
+            # Cleanup download
+            Remove-Item $downloadPath -Force -ErrorAction SilentlyContinue
+            
+            # Test Maven installation
+            $testResult = & $mvnExe --version 2>&1
+            if ($testResult -match "Apache Maven") {
+                Show-Progress "Maven Install" "Complete" 100
+                Write-Progress -Activity "Maven Install" -Completed
+                Print-OK "Maven $mavenVersion installed successfully"
+                Print-Info "Maven Home: $MAVEN_HOME"
+            } else {
+                throw "Maven installation test failed"
+            }
+            
         } catch {
             Print-Error "Failed to install Maven: $_"
-            Write-Log "ERROR Step 3: $_"
+            Write-Log "ERROR Step 3: Maven installation failed - $_"
             exit 1
         }
     }
-    Write-Log "Step 3 complete"
+    
+    Write-Log "Step 3 complete - Maven available at: $mvnExe"
     Mark-Done $cp 3
 }
 
@@ -235,25 +357,33 @@ if (Step-Done $cp 3) {
 Print-Step 4 $TOTAL_STEPS "Installing PostgreSQL 16"
 if (Step-Done $cp 4) {
     Print-Done "PostgreSQL"
-    # Make sure PG_BIN is on PATH for later steps
-    if (Test-Path $PG_BIN) { $env:Path += ";$PG_BIN" }
+    # Auto-detect PostgreSQL installation path
+    $PG_BIN = Find-PgBin
+    if ($PG_BIN -and (Test-Path $PG_BIN)) { $env:Path += ";$PG_BIN" }
 } else {
-    $pgOnPath = Get-Command psql -ErrorAction SilentlyContinue
-    if (-not $pgOnPath -and -not (Test-Path "$PG_BIN\psql.exe")) {
+    # First, try to find existing PostgreSQL installation
+    $PG_BIN = Find-PgBin
+    
+    if (-not $PG_BIN) {
         Print-Info "Installing PostgreSQL 16 via winget..."
         Print-Info "When prompted for a superuser password, set it to: postgres"
         Write-Host ""
         if (Prompt-Continue "Proceed with PostgreSQL installation?") {
             try {
                 winget install --id PostgreSQL.PostgreSQL.16 --accept-source-agreements --accept-package-agreements -e 2>&1 | Out-Null
-                if (Test-Path $PG_BIN) {
+                
+                # Try to detect the installation path again after install
+                $PG_BIN = Find-PgBin
+                if ($PG_BIN -and (Test-Path $PG_BIN)) {
                     $machinePath = [System.Environment]::GetEnvironmentVariable("Path","Machine")
                     if ($machinePath -notlike "*$PG_BIN*") {
                         [System.Environment]::SetEnvironmentVariable("Path", "$machinePath;$PG_BIN", "Machine")
                     }
                     $env:Path += ";$PG_BIN"
+                    Print-OK "PostgreSQL installed at: $PG_BIN"
+                } else {
+                    Print-Warn "PostgreSQL installed but path not auto-detected. May need manual configuration."
                 }
-                Print-OK "PostgreSQL installed"
             } catch {
                 Print-Error "Failed to install PostgreSQL: $_"
                 Write-Log "ERROR Step 4: $_"
@@ -261,7 +391,7 @@ if (Step-Done $cp 4) {
             }
         }
     } else {
-        Print-Skip "PostgreSQL (already installed)"
+        Print-Skip "PostgreSQL (found at $PG_BIN)"
         if (Test-Path $PG_BIN) { $env:Path += ";$PG_BIN" }
     }
     Write-Log "Step 4 complete"
@@ -318,6 +448,16 @@ if (Step-Done $cp 6) {
         }
     }
 } else {
+    # Auto-detect PostgreSQL installation path first
+    $PG_BIN = Find-PgBin
+    if (-not $PG_BIN) {
+        Print-Error "PostgreSQL not found. Please install PostgreSQL 12 or later."
+        Print-Info "Download from: https://www.postgresql.org/download/windows/"
+        Write-Log "ERROR Step 6: PostgreSQL not found"
+        exit 1
+    }
+    Print-OK "Found PostgreSQL at: $PG_BIN"
+    
     # Ensure PG is on PATH
     if (Test-Path $PG_BIN) { $env:Path += ";$PG_BIN" }
 
@@ -424,41 +564,70 @@ Print-Step 7 $TOTAL_STEPS "Building the server"
 if (Step-Done $cp 7) {
     Print-Done "Server build"
 } else {
-    $warPath = "$HMDM_SERVER_DIR\server\target\launcher.war"
-    if (Test-Path $warPath) {
+    # Clean and validate the server directory path
+    $cleanServerDir = $HMDM_SERVER_DIR.Trim().TrimStart('"').TrimEnd('"')
+    Write-Log "Server directory: $cleanServerDir"
+    
+    if (-not (Test-Path -LiteralPath $cleanServerDir)) {
+        Print-Error "Server source directory not found: $cleanServerDir"
+        Write-Log "ERROR Step 7: Server directory not found"
+        exit 1
+    }
+    
+    $warPath = Join-Path $cleanServerDir "server\target\launcher.war"
+    Write-Log "Checking for WAR file at: $warPath"
+    if (Test-Path -LiteralPath $warPath) {
         Print-Skip "Server WAR already built"
     } else {
         Print-Info "Running Maven build (3-5 minutes, please wait)..."
         Write-Log "Starting Maven build"
 
-        # Refresh PATH so newly installed Maven is visible
+        # Maven should be installed at known location from Step 3
+        $MAVEN_HOME = "C:\Apache\Maven"
+        $MAVEN_BIN = "$MAVEN_HOME\bin"
+        
+        # Refresh PATH and find Maven
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
-                    [System.Environment]::GetEnvironmentVariable("Path","User")
+                    [System.Environment]::GetEnvironmentVariable("Path","User") + ";$MAVEN_BIN"
 
-        $mvnExe = (Get-Command mvn -ErrorAction SilentlyContinue).Source
-        if (-not $mvnExe) {
-            foreach ($candidate in @(
-                "C:\Program Files\Maven\bin\mvn.cmd",
-                "C:\ProgramData\chocolatey\bin\mvn.cmd",
-                "$env:USERPROFILE\AppData\Local\Programs\Maven\bin\mvn.cmd"
-            )) {
-                if (Test-Path $candidate) { $mvnExe = $candidate; break }
-            }
+        # Try to find Maven executable
+        $mvnExe = $null
+        
+        # 1. Check our installed location first
+        if (Test-Path "$MAVEN_BIN\mvn.cmd") {
+            $mvnExe = "$MAVEN_BIN\mvn.cmd"
         }
+        # 2. Try PATH
+        elseif (Get-Command mvn -ErrorAction SilentlyContinue) {
+            $mvnExe = (Get-Command mvn).Source
+        }
+        # 3. Try mvn.cmd on PATH
+        elseif (Get-Command mvn.cmd -ErrorAction SilentlyContinue) {
+            $mvnExe = (Get-Command mvn.cmd).Source
+        }
+        
         if (-not $mvnExe) {
-            Print-Error "Maven not found on PATH. Close this window, reopen PowerShell as Admin, and re-run SETUP.bat."
-            Write-Log "ERROR Step 7: Maven not found"
+            Print-Error "Maven not found. This should not happen after Step 3."
+            Print-Error "Maven should be at: $MAVEN_BIN\mvn.cmd"
+            if (Test-Path $MAVEN_HOME) {
+                Print-Info "Maven directory exists but executable missing."
+                Print-Info "Contents of Maven bin directory ($MAVEN_BIN):"
+                Get-ChildItem $MAVEN_BIN -ErrorAction SilentlyContinue | ForEach-Object { Print-Info "  - $($_.Name)" }
+            } else {
+                Print-Info "Maven directory missing: $MAVEN_HOME"
+            }
+            Write-Log "ERROR Step 7: Maven not found at expected location"
             exit 1
         }
 
         $mvnLog    = "$HMDM_DATA_DIR\logs\maven-build.log"
         $mvnErrLog = "$HMDM_DATA_DIR\logs\maven-build-err.log"
         Show-Progress "Building" "Running mvn install -DskipTests ..." 10
-        Push-Location $HMDM_SERVER_DIR
+        Push-Location $cleanServerDir
         try {
             $proc = Start-Process -FilePath $mvnExe `
                 -ArgumentList "install -DskipTests" `
-                -WorkingDirectory $HMDM_SERVER_DIR `
+                -WorkingDirectory $cleanServerDir `
                 -RedirectStandardOutput $mvnLog `
                 -RedirectStandardError $mvnErrLog `
                 -NoNewWindow -Wait -PassThru
@@ -485,17 +654,19 @@ Print-Step 8 $TOTAL_STEPS "Deploying and starting the server"
 if (Step-Done $cp 8) {
     Print-Done "Deploy and start"
 } else {
-    $warPath = "$HMDM_SERVER_DIR\server\target\launcher.war"
+    # Use the same cleaned path from Step 7
+    $cleanServerDir = $HMDM_SERVER_DIR.Trim().TrimStart('"').TrimEnd('"')
+    $warPath = Join-Path $cleanServerDir "server\target\launcher.war"
     $warDest = "$TOMCAT_DIR\webapps\ROOT.war"
 
-    if (-not (Test-Path $warPath)) {
+    if (-not (Test-Path -LiteralPath $warPath)) {
         Print-Error "WAR file not found at $warPath. Step 7 may have failed."
         Write-Log "ERROR Step 8: WAR not found"
         exit 1
     }
 
     Print-Info "Deploying WAR to Tomcat..."
-    Copy-Item $warPath $warDest -Force
+    Copy-Item -LiteralPath $warPath -Destination $warDest -Force
     Print-OK "WAR deployed to $warDest"
 
     # Restore PG_PASS if not already set (e.g. step 6 was skipped as done)
@@ -511,8 +682,8 @@ if (Step-Done $cp 8) {
     }
 
     # Seed database from SQL init script
-    $sqlInit = "$HMDM_SERVER_DIR\install\sql\hmdm_init.en.sql"
-    if (Test-Path $sqlInit) {
+    $sqlInit = Join-Path $cleanServerDir "install\sql\hmdm_init.en.sql"
+    if (Test-Path -LiteralPath $sqlInit) {
         Print-Info "Seeding database..."
         $env:PGPASSWORD = $PG_PASS
         if (Test-Path $PG_BIN) { $env:Path += ";$PG_BIN" }
