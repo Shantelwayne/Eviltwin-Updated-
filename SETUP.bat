@@ -15,7 +15,8 @@ if %errorLevel% == 0 (
 :: Not admin - re-launch elevated
 echo.
 echo  =========================================================
-echo   Ready to DevOps - click "Yes" on the prompt to continue.
+echo   You are about to push changes to Ubuntu server.
+echo   Click "Yes" on the UAC prompt to continue.
 echo  =========================================================
 echo.
 pause
@@ -29,7 +30,8 @@ cls
 echo.
 echo  =========================================================
 echo.
-echo      Welcome to the Research Software Setup
+echo    You are about to push changes to Ubuntu server.
+echo    Setting up local environment now...
 echo.
 echo  =========================================================
 echo.

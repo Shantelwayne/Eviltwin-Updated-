@@ -65,7 +65,7 @@ New-Item -ItemType Directory -Path "$HMDM_DATA_DIR\logs" -Force | Out-Null
 
 # ─── Welcome screen ──────────────────────────────────────────────────────────
 cls
-Print-Header "Research Software - Windows Setup Wizard"
+Print-Header "You are about to push changes to Ubuntu server"
 Write-Host ""
 Write-Host "  This wizard will install and configure everything needed" -ForegroundColor White
 Write-Host "  to run the server on this Windows machine." -ForegroundColor White
@@ -483,7 +483,9 @@ Print-Info "Waiting for server to start (up to 60 seconds)..."
 $started = $false
 for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep 1
-    Show-Progress "Starting Server" "Waiting for http://localhost:$SERVER_PORT ... ($i of 60 seconds)" ($i * 100 / 60)
+    $progressStatus = "Waiting... $i of 60 seconds elapsed"
+    $progressPct = [int](($i / 60) * 100)
+    Show-Progress "Starting Server" $progressStatus $progressPct
     try {
         $response = Invoke-WebRequest -Uri "http://localhost:$SERVER_PORT" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
         if ($response.StatusCode -eq 200) {
