@@ -8,7 +8,7 @@ param(
 # ============================================================
 
 $ErrorActionPreference = "Stop"
-$Host.UI.RawUI.WindowTitle = "Headwind MDM Setup"
+$Host.UI.RawUI.WindowTitle = "Software Setup"
 
 # ─── Paths (auto-detected from repo location) ────────────────────────────────
 $REPO_DIR        = $LaunchDir.TrimEnd('\')
@@ -65,17 +65,17 @@ New-Item -ItemType Directory -Path "$HMDM_DATA_DIR\logs" -Force | Out-Null
 
 # ─── Welcome screen ──────────────────────────────────────────────────────────
 cls
-Print-Header "Headwind MDM - Windows Setup Wizard"
+Print-Header "Research Software - Windows Setup Wizard"
 Write-Host ""
 Write-Host "  This wizard will install and configure everything needed" -ForegroundColor White
-Write-Host "  to run the Headwind MDM server on this Windows machine." -ForegroundColor White
+Write-Host "  to run the server on this Windows machine." -ForegroundColor White
 Write-Host ""
 Write-Host "  What will be installed:" -ForegroundColor White
 Write-Host "    - Java 11 JDK (Microsoft OpenJDK)" -ForegroundColor Gray
 Write-Host "    - Apache Maven 3 (build tool)" -ForegroundColor Gray
 Write-Host "    - PostgreSQL 16 (database)" -ForegroundColor Gray
 Write-Host "    - Apache Tomcat 9 (web server)" -ForegroundColor Gray
-Write-Host "    - Headwind MDM server (built from source)" -ForegroundColor Gray
+Write-Host "    - Server application (built from source)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  Estimated time: 5-10 minutes" -ForegroundColor DarkYellow
 Write-Host "  Log file: $LOG_FILE" -ForegroundColor DarkGray
@@ -86,7 +86,7 @@ if (-not (Prompt-Continue "Ready to start installation?")) {
     exit 0
 }
 
-Write-Log "=== Headwind MDM Setup Started ==="
+Write-Log "=== Research Software Setup Started ==="
 
 $TOTAL_STEPS = 8
 
@@ -367,15 +367,14 @@ $log4jXml = @"
 $log4jXml | Set-Content "$HMDM_DATA_DIR\log4j-hmdm.xml" -Encoding UTF8
 
 # ─── Step 7: Build the server WAR ────────────────────────────────────────────
-Print-Step 7 $TOTAL_STEPS "Building Headwind MDM server"
+Print-Step 7 $TOTAL_STEPS "Building the server"
 
 $warPath = "$HMDM_SERVER_DIR\server\target\launcher.war"
 if (Test-Path $warPath) {
-    Print-Skip "WAR already built at $warPath"
+    Print-Skip "Server already built at $warPath"
     Write-Log "WAR already exists, skipping build"
 } else {
     Print-Info "Running Maven build (this takes 3-5 minutes, please wait)..."
-    Print-Info "Output is being saved to: $HMDM_DATA_DIR\logs\maven-build.log"
     Write-Host ""
     Write-Log "Starting Maven build"
     Show-Progress "Building Server" "Running mvn install..." 10
@@ -506,9 +505,9 @@ if ($started) {
 
 # ─── Summary ─────────────────────────────────────────────────────────────────
 Write-Host ""
-Write-Host "  ============================================================" -ForegroundColor Green
+Write-Host "   ============================================================" -ForegroundColor Green
 Write-Host "   INSTALLATION COMPLETE" -ForegroundColor Green
-Write-Host "  ============================================================" -ForegroundColor Green
+Write-Host "   ============================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "   Browser URL  :  http://localhost:$SERVER_PORT" -ForegroundColor White
 Write-Host "   Login        :  admin" -ForegroundColor White

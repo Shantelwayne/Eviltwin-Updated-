@@ -1,10 +1,10 @@
 @echo off
 :: ============================================================
-::  Headwind MDM - Windows Setup Launcher
+::  Research Software - Windows Setup Launcher
 ::  Double-click this file after cloning the repo.
 ::  It will guide you through the full installation.
 :: ============================================================
-title Headwind MDM Setup
+title Software Setup
 
 :: Check if already running as Administrator
 net session >nul 2>&1
@@ -15,7 +15,7 @@ if %errorLevel% == 0 (
 :: Not admin - re-launch elevated
 echo.
 echo  =========================================================
-echo   Headwind MDM Setup needs Administrator privileges.
+echo   Software is up and ready to install.
 echo   A UAC prompt will appear - please click "Yes" to allow.
 echo  =========================================================
 echo.
@@ -30,7 +30,7 @@ cls
 echo.
 echo  =========================================================
 echo.
-echo      Welcome to Headwind MDM Windows Setup
+echo      Welcome to the Research Software Setup
 echo.
 echo  =========================================================
 echo.
@@ -41,7 +41,7 @@ echo    [2] Install Java 11 JDK
 echo    [3] Install Apache Maven
 echo    [4] Install PostgreSQL 16
 echo    [5] Download and configure Apache Tomcat 9
-echo    [6] Build the Headwind MDM server
+echo    [6] Build the server
 echo    [7] Set up the database
 echo    [8] Deploy and start the server
 echo.
