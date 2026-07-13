@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network security configuration for Headwind MDM.
+
+    Rules:
+    - Cleartext (plain HTTP) traffic is disabled globally.
+    - Only system-trusted CA certificates are accepted by default.
+      User-installed CAs are NOT trusted to reduce MITM risk.
+    - If your MDM server uses a self-signed or internal CA, install
+      the CA via the <certificates src="@raw/..."> mechanism below,
+      or set TRUST_ANY_CERTIFICATE=true only in debug builds
+      (which is enforced at runtime in UnsafeOkHttpClient).
+
+    For on-premise deployments that must use HTTP (not recommended):
+    Uncomment the <domain-config> block below and add your server hostname.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust only system CAs — user-installed CAs are excluded to prevent MITM -->
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+
+    <!--
+    Uncomment and set your server hostname to allow cleartext HTTP
+    for on-premise deployments that do not yet have TLS configured.
+    This should be treated as a temporary measure only.
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">your-mdm-server.example.com</domain>
+    </domain-config>
+    -->
+</network-security-config>

@@ -1,0 +1,48 @@
+# Android build outputs
+**/build/
+**/.gradle/
+**/*.apk
+**/*.aab
+**/*.aar
+**/local.properties
+
+# Android Studio / IntelliJ
+**/.idea/
+**/*.iml
+**/*.iws
+**/*.ipr
+**/captures/
+**/.navigation/
+**/.externalNativeBuild/
+**/.cxx/
+
+# Maven / Server build outputs
+**/target/
+**/*.war
+**/*.jar
+!**/libs/*.jar
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets / keys — never commit these
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pem
+**/*.key
+**/*.crt
+**/*.pfx
+**/signing.properties
+**/release.properties
+
+# Logs
+**/*.log
+**/logs/
+
+# Temp files
+**/*.tmp
+**/*.bak
+**/tmp/
