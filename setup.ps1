@@ -1,6 +1,7 @@
 param(
     [string]$LaunchDir = (Split-Path -Parent $MyInvocation.MyCommand.Path),
-    [switch]$Reset
+    [switch]$Reset,
+    [switch]$Automated
 )
 
 # ============================================================
@@ -52,6 +53,10 @@ function Write-Log($text) {
     Add-Content -Path $LOG_FILE -Value "[$timestamp] $text" -ErrorAction SilentlyContinue
 }
 function Prompt-Continue($question) {
+    if ($Automated) {
+        Write-Host "  $question [Auto: Yes]" -ForegroundColor Green
+        return $true
+    }
     Write-Host ""
     Write-Host "  $question [Y/n] " -ForegroundColor Yellow -NoNewline
     $response = Read-Host
@@ -169,9 +174,13 @@ Write-Host "  Log file      : $LOG_FILE" -ForegroundColor DarkGray
 Write-Host "  Checkpoint    : $CHECKPOINT_FILE" -ForegroundColor DarkGray
 Write-Host ""
 
-if (-not (Prompt-Continue "Ready to continue?")) {
-    Write-Host "  Setup cancelled." -ForegroundColor Yellow
-    exit 0
+if (-not $Automated) {
+    if (-not (Prompt-Continue "Ready to continue?")) {
+        Write-Host "  Setup cancelled." -ForegroundColor Yellow
+        exit 0
+    }
+} else {
+    Write-Host "  Automated mode: Proceeding without prompts..." -ForegroundColor Green
 }
 
 Write-Log "=== Setup Started (completed steps: $($cp.CompletedSteps -join ',')) ==="
@@ -469,34 +478,61 @@ if (Step-Done $cp 6) {
         Start-Sleep 3
     }
 
-    # Prompt for password with retry
+    # Handle PostgreSQL password authentication
     $maxAttempts = 3
-    $attempt = 0
     $pgSuperPassPlain = ""
-    while ($attempt -lt $maxAttempts) {
-        $attempt++
-        Write-Host ""
-        Write-Host "  Enter the PostgreSQL superuser (postgres) password" -ForegroundColor Yellow
-        Write-Host "  Attempt $attempt of $maxAttempts  (default password is 'postgres')" -ForegroundColor Gray
-        $pgSuperPass = Read-Host "  Password" -AsSecureString
-        $pgSuperPassPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-            [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pgSuperPass))
-        $env:PGPASSWORD = $pgSuperPassPlain
-
-        # Test the password
-        $testResult = & "$PG_BIN\psql.exe" -U postgres -h $PG_HOST -p $PG_PORT -tAc "SELECT 1" 2>&1
-        if ($testResult -match "1") {
-            Print-OK "Password accepted"
-            break
-        } else {
-            Print-Warn "Password incorrect or PostgreSQL not reachable."
-            if ($attempt -eq $maxAttempts) {
-                Print-Error "Failed to connect after $maxAttempts attempts."
-                Print-Error "Make sure PostgreSQL is running and use the password you set during install."
-                Write-Log "ERROR Step 6: could not connect to PostgreSQL after $maxAttempts attempts"
-                exit 1
+    
+    if ($Automated) {
+        # Automated mode: try common default passwords
+        Print-Info "Automated mode: Trying default PostgreSQL passwords..."
+        $defaultPasswords = @("postgres", "admin", "password", "")
+        
+        foreach ($defaultPass in $defaultPasswords) {
+            $env:PGPASSWORD = $defaultPass
+            Write-Host "  Trying password: '$defaultPass'" -ForegroundColor Gray
+            
+            $testResult = & "$PG_BIN\psql.exe" -U postgres -h $PG_HOST -p $PG_PORT -tAc "SELECT 1" 2>&1
+            if ($testResult -match "1") {
+                $pgSuperPassPlain = $defaultPass
+                Print-OK "Password accepted: '$defaultPass'"
+                break
             }
-            Print-Info "Please try again..."
+        }
+        
+        if (-not $pgSuperPassPlain) {
+            Print-Error "None of the default passwords worked in automated mode."
+            Print-Info "Default passwords tried: postgres, admin, password, (blank)"
+            Write-Log "ERROR Step 6: No default password worked in automated mode"
+            exit 1
+        }
+    } else {
+        # Interactive mode: prompt user for password
+        $attempt = 0
+        while ($attempt -lt $maxAttempts) {
+            $attempt++
+            Write-Host ""
+            Write-Host "  Enter the PostgreSQL superuser (postgres) password" -ForegroundColor Yellow
+            Write-Host "  Attempt $attempt of $maxAttempts  (default password is 'postgres')" -ForegroundColor Gray
+            $pgSuperPass = Read-Host "  Password" -AsSecureString
+            $pgSuperPassPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pgSuperPass))
+            $env:PGPASSWORD = $pgSuperPassPlain
+
+            # Test the password
+            $testResult = & "$PG_BIN\psql.exe" -U postgres -h $PG_HOST -p $PG_PORT -tAc "SELECT 1" 2>&1
+            if ($testResult -match "1") {
+                Print-OK "Password accepted"
+                break
+            } else {
+                Print-Warn "Password incorrect or PostgreSQL not reachable."
+                if ($attempt -eq $maxAttempts) {
+                    Print-Error "Failed to connect after $maxAttempts attempts."
+                    Print-Error "Make sure PostgreSQL is running and use the password you set during install."
+                    Write-Log "ERROR Step 6: could not connect to PostgreSQL after $maxAttempts attempts"
+                    exit 1
+                }
+                Print-Info "Please try again..."
+            }
         }
     }
 
