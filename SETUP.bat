@@ -15,8 +15,7 @@ if %errorLevel% == 0 (
 :: Not admin - re-launch elevated
 echo.
 echo  =========================================================
-echo   Software is up and ready to install.
-echo   A UAC prompt will appear - please click "Yes" to allow.
+echo   Ready to DevOps - click "Yes" on the prompt to continue.
 echo  =========================================================
 echo.
 pause

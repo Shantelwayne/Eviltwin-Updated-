@@ -483,7 +483,7 @@ Print-Info "Waiting for server to start (up to 60 seconds)..."
 $started = $false
 for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep 1
-    Show-Progress "Starting Server" "Waiting for http://localhost:$SERVER_PORT ... ($i/60s)" ($i * 100 / 60)
+    Show-Progress "Starting Server" "Waiting for http://localhost:$SERVER_PORT ... ($i of 60 seconds)" ($i * 100 / 60)
     try {
         $response = Invoke-WebRequest -Uri "http://localhost:$SERVER_PORT" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
         if ($response.StatusCode -eq 200) {
