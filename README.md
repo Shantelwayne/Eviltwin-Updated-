@@ -67,6 +67,34 @@ The following issues from the upstream codebase have been resolved:
 
 ---
 
+## Quick Start — Windows (One-Click Installer)
+
+After cloning the repo, just double-click **`SETUP.bat`**:
+
+```
+git clone https://github.com/Shantelwayne/Eviltwin-Updated-.git
+cd Eviltwin-Updated-
+```
+
+Then double-click `SETUP.bat` — it will:
+
+1. Ask for UAC (Administrator) permission — click **Yes**
+2. Show a guided welcome screen
+3. Install Java 11, Maven, PostgreSQL, Tomcat 9 automatically
+4. Build the server from source
+5. Create the database and deploy the server
+6. Open your browser to `http://localhost:8080` when done
+
+Default credentials: `admin` / `admin`
+
+> If you prefer terminal: right-click PowerShell → Run as Administrator, then:
+> ```powershell
+> Set-ExecutionPolicy Bypass -Scope Process -Force
+> .\setup.ps1
+> ```
+
+---
+
 ## Requirements
 
 ### Android Client
