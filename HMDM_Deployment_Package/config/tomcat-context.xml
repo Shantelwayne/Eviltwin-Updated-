@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context>
+    <Parameter name="db.jdbcUrl" value="jdbc:postgresql://localhost:5432/hmdm" type="java.lang.String" />
+    <Parameter name="db.username" value="hmdm" type="java.lang.String" />
+    <Parameter name="db.password" value="CHANGE_THIS_PASSWORD" type="java.lang.String" />
+    <Parameter name="files.directory" value="C:/hmdm/files" type="java.lang.String" />
+    <Parameter name="base.url" value="http://localhost:8080" type="java.lang.String" />
+    <Parameter name="mobile.url" value="http://localhost:8080" type="java.lang.String" />
+    <Parameter name="log4j.configuration" value="C:/hmdm/log4j-hmdm.xml" type="java.lang.String" />
+</Context>

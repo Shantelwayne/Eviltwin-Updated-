@@ -198,6 +198,7 @@
 
                 <configuration>
                     <workingDirectory>webtarget</workingDirectory>
+                    <skip>${skip.frontend}</skip>
                 </configuration>
 
                 <executions>
@@ -208,6 +209,7 @@
                         <configuration>
                             <nodeVersion>v18.16.0</nodeVersion>
                             <npmVersion>9.5.1</npmVersion>
+                            <skip>${skip.frontend}</skip>
                         </configuration>
                     </execution>
 
@@ -217,6 +219,7 @@
 
                         <configuration>
                             <arguments>install</arguments>
+                            <skip>${skip.frontend}</skip>
                         </configuration>
                     </execution>
 
@@ -227,6 +230,7 @@
 
                         <configuration>
                             <arguments>resolve</arguments>
+                            <skip>${skip.frontend}</skip>
                         </configuration>
                     </execution>
 
