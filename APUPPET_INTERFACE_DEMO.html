@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>aPuppet Interface Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .demo-section {
+            background: rgba(255,255,255,0.15);
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .login-form {
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+        .control-interface {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .phone-screen {
+            width: 270px;
+            height: 480px;
+            background: #000;
+            border: 15px solid #333;
+            border-radius: 25px;
+            position: relative;
+            cursor: pointer;
+        }
+        .android-ui {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #4CAF50, #2196F3);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .nav-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.4);
+            transform: scale(1.1);
+        }
+        .feature-box {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            background: #4CAF50;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .start-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .architecture {
+            text-align: center;
+            font-family: monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; font-size: 2.5rem; margin-bottom: 10px;">🎮 aPuppet Remote Control Interface</h1>
+        <p style="text-align: center; font-size: 1.2rem; opacity: 0.9;">WebRTC-Powered Android Remote Access System</p>
+        
+        <div class="demo-section">
+            <h2>🔐 Step 1: Login Interface</h2>
+            <div class="login-form">
+                <h3>aPuppet - Ready to Control!</h3>
+                <p>Enter the credentials provided by the mobile device user</p>
+                <input type="text" placeholder="Session ID (e.g., 12345678)" maxlength="8">
+                <input type="text" placeholder="Password (e.g., 0000)" maxlength="4">
+                <button class="start-btn" onclick="showControlInterface()">Start Remote Control</button>
+            </div>
+        </div>
+
+        <div class="demo-section" id="control-section" style="display: none;">
+            <h2>📱 Step 2: Live Remote Control</h2>
+            <div class="control-interface">
+                <div>
+                    <h4>🖥️ Live Android Screen</h4>
+                    <div class="phone-screen" onclick="simulateTap(event)">
+                        <div class="android-ui">
+                            <div style="text-align: center; padding: 20px;">
+                                <h4 style="color: white; margin: 0;">📱 Target Device</h4>
+                                <p style="color: rgba(255,255,255,0.8);">Click anywhere to control!</p>
+                                <div class="feature-box">
+                                    <p>📋 Apps</p>
+                                </div>
+                                <div class="feature-box">
+                                    <p>⚙️ Settings</p>
+                                </div>
+                                <div class="feature-box">
+                                    <p>💬 Messages</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="nav-buttons">
+                        <button class="nav-btn" onclick="sendCommand('back')" title="Back">◀</button>
+                        <button class="nav-btn" onclick="sendCommand('home')" title="Home">⌂</button>
+                        <button class="nav-btn" onclick="sendCommand('recents')" title="Recent Apps">⊞</button>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <h4>🎮 Control Features</h4>
+                    
+                    <div class="feature-box">
+                        <h5><span class="status-indicator"></span>Live Screen Streaming</h5>
+                        <p>Real-time view of device screen via WebRTC</p>
+                    </div>
+
+                    <div class="feature-box">
+                        <h5><span class="status-indicator"></span>Touch Simulation</h5>
+                        <ul class="feature-list">
+                            <li>• Tap - Click on screen</li>
+                            <li>• Swipe - Click & drag</li>
+                            <li>• Long press - Hold click</li>
+                            <li>• Multi-touch gestures</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-box">
+                        <h5><span class="status-indicator"></span>System Controls</h5>
+                        <ul class="feature-list">
+                            <li>• Back button navigation</li>
+                            <li>• Home screen access</li>
+                            <li>• Recent apps switcher</li>
+                            <li>• Notification bar expansion</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-box">
+                        <h5><span class="status-indicator"></span>Session Management</h5>
+                        <ul class="feature-list">
+                            <li>• Connection status monitoring</li>
+                            <li>• Video quality statistics</li>
+                            <li>• Chat with device user</li>
+                            <li>• Secure session disconnect</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>🏗️ System Architecture</h2>
+            <div class="architecture">
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐<br>
+│   Android App   │◄──►│   aPuppet Server │◄──►│   Web Browser   │<br>
+│  (Target Phone) │    │   (Your Server)  │    │ (Your Control)  │<br>
+└─────────────────┘    └──────────────────┘    └─────────────────┘<br>
+                              │<br>
+                    ┌─────────┴─────────┐<br>
+                    │ Docker Services:  │<br>
+                    │ • Janus WebRTC    │<br>
+                    │ • Nginx Web       │<br>
+                    │ • SSL/Security    │<br>
+                    └───────────────────┘
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>🚀 Getting Started</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="feature-box">
+                    <h4>📋 Prerequisites</h4>
+                    <ul class="feature-list">
+                        <li>✅ Docker Desktop installed</li>
+                        <li>✅ aPuppet server files</li>
+                        <li>✅ Android device with aPuppet app</li>
+                        <li>✅ Network connectivity</li>
+                    </ul>
+                </div>
+                <div class="feature-box">
+                    <h4>⚡ Quick Launch</h4>
+                    <ul class="feature-list">
+                        <li>1. Run START_APUPPET_SERVER.bat</li>
+                        <li>2. Open http://localhost/web-admin/</li>
+                        <li>3. Enter session credentials</li>
+                        <li>4. Start remote control!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tapCount = 0;
+
+        function showControlInterface() {
+            document.getElementById('control-section').style.display = 'block';
+            document.querySelector('.login-form').innerHTML = 
+                '<h3 style="color: #4CAF50;">✅ Connected Successfully!</h3><p>Control interface loaded below...</p>';
+        }
+
+        function simulateTap(event) {
+            tapCount++;
+            const rect = event.target.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Create visual feedback
+            const feedback = document.createElement('div');
+            feedback.style.position = 'absolute';
+            feedback.style.left = x + 'px';
+            feedback.style.top = y + 'px';
+            feedback.style.width = '20px';
+            feedback.style.height = '20px';
+            feedback.style.background = 'rgba(255,255,255,0.8)';
+            feedback.style.borderRadius = '50%';
+            feedback.style.pointerEvents = 'none';
+            feedback.style.zIndex = '1000';
+            feedback.style.animation = 'pulse 0.5s ease-out';
+            
+            event.target.style.position = 'relative';
+            event.target.appendChild(feedback);
+            
+            setTimeout(() => {
+                if (feedback.parentNode) {
+                    feedback.parentNode.removeChild(feedback);
+                }
+            }, 500);
+
+            console.log(`🎯 Simulated TAP at (${Math.round(x)}, ${Math.round(y)}) - Command sent: tap,${Math.round(x)},${Math.round(y)},150`);
+        }
+
+        function sendCommand(action) {
+            console.log(`🎮 Simulated ${action.toUpperCase()} button press`);
+            
+            // Visual feedback for nav buttons
+            event.target.style.background = 'rgba(76, 175, 80, 0.8)';
+            setTimeout(() => {
+                event.target.style.background = 'rgba(255,255,255,0.2)';
+            }, 200);
+        }
+
+        // Add some interactive effects
+        document.addEventListener('DOMContentLoaded', function() {
+            const phoneScreen = document.querySelector('.phone-screen');
+            if (phoneScreen) {
+                phoneScreen.addEventListener('mouseover', function() {
+                    this.style.transform = 'scale(1.02)';
+                    this.style.transition = 'transform 0.3s';
+                });
+                phoneScreen.addEventListener('mouseout', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
